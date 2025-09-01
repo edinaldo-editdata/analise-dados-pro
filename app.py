@@ -1062,13 +1062,12 @@ elif project_action == "📋 Listar Projetos":
             st.info("📭 Nenhum projeto encontrado")
 
 # Abas principais
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📥 Import de Dados", 
     "🧹 Data Cleaning", 
     "🔍 Filtrar Dados",
     "🔗 Relacionamentos", 
-    "📈 Análises", 
-    "💾 Gerenciar Dados"
+    "📈 Análises"
 ])
 
 # TAB 1: Import de Dados
@@ -1688,75 +1687,157 @@ with tab3:
 
 # TAB 4: Relacionamentos
 with tab4:
-    st.header("Análises e Visualizações")
+    st.header("🔗 Relacionamentos entre Tabelas")
 
-    if not st.session_state.datasets:
-        st.warning("Importe dados primeiro")
+    if len(st.session_state.datasets) < 2:
+        st.warning("⚠️ Você precisa de pelo menos 2 datasets para criar relacionamentos")
+        st.info("💡 Importe mais dados na aba 'Import de Dados' primeiro")
     else:
-        dataset_names = list(st.session_state.datasets.keys())
-        selected_dataset = st.selectbox("Dataset para análise", dataset_names, key="analysis_ds")
+        st.subheader("Configurar Relacionamento")
         
-        if selected_dataset:
-            df = st.session_state.datasets[selected_dataset]
+        dataset_names = list(st.session_state.datasets.keys())
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**📊 Tabela Principal (Esquerda)**")
+            left_dataset = st.selectbox("Selecione a tabela principal", dataset_names, key="left_ds")
             
-            analysis_type = st.selectbox("Tipo de Análise", 
-                                        ["Estatísticas Descritivas", "Gráfico de Barras", "Histograma", 
-                                        "Scatter Plot", "Correlação", "Box Plot"])
-            
-            if analysis_type == "Estatísticas Descritivas":
-                st.subheader("Estatísticas Descritivas")
-                st.dataframe(df.describe())
+            if left_dataset:
+                left_df = st.session_state.datasets[left_dataset]
+                left_columns = list(left_df.columns)
+                left_key = st.selectbox("Campo chave da tabela principal", left_columns, key="left_key")
                 
-                # Informações adicionais
-                st.subheader("Informações Adicionais")
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Total de Linhas", df.shape[0])
-                    st.metric("Total de Colunas", df.shape[1])
-                with col2:
-                    st.metric("Valores Nulos", df.isnull().sum().sum())
-                    st.metric("Duplicatas", df.duplicated().sum())
+                # Preview da tabela principal
+                st.markdown(f"**Preview de {left_dataset}:**")
+                st.dataframe(left_df.head(3), use_container_width=True)
+        
+        with col2:
+            st.markdown("**📋 Tabela Secundária (Direita)**")
+            right_dataset_options = [ds for ds in dataset_names if ds != left_dataset]
+            right_dataset = st.selectbox("Selecione a tabela secundária", right_dataset_options, key="right_ds")
             
-            elif analysis_type == "Gráfico de Barras":
-                cat_cols = get_categorical_columns(df)
-                if cat_cols:
-                    selected_col = st.selectbox("Coluna categórica", cat_cols)
-                    fig = px.bar(df[selected_col].value_counts().reset_index(), 
-                                x='index', y=selected_col)
-                    st.plotly_chart(fig, use_container_width=True)
-            
-            elif analysis_type == "Histograma":
-                num_cols = get_numeric_columns(df)
-                if num_cols:
-                    selected_col = st.selectbox("Coluna numérica", num_cols)
-                    fig = px.histogram(df, x=selected_col)
-                    st.plotly_chart(fig, use_container_width=True)
-            
-            elif analysis_type == "Scatter Plot":
-                num_cols = get_numeric_columns(df)
-                if len(num_cols) >= 2:
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        x_col = st.selectbox("Eixo X", num_cols)
-                    with col2:
-                        y_col = st.selectbox("Eixo Y", num_cols)
+            if right_dataset:
+                right_df = st.session_state.datasets[right_dataset]
+                right_columns = list(right_df.columns)
+                right_key = st.selectbox("Campo chave da tabela secundária", right_columns, key="right_key")
+                
+                # Preview da tabela secundária
+                st.markdown(f"**Preview de {right_dataset}:**")
+                st.dataframe(right_df.head(3), use_container_width=True)
+        
+        # Configurações do relacionamento
+        st.markdown("---")
+        st.subheader("⚙️ Configurações do Relacionamento")
+        
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            join_type = st.selectbox(
+                "Tipo de Relacionamento",
+                ["Inner Join", "Left Join", "Right Join", "Outer Join"],
+                help="Inner: apenas registros que existem em ambas as tabelas\n"
+                     "Left: todos os registros da tabela principal\n"
+                     "Right: todos os registros da tabela secundária\n"
+                     "Outer: todos os registros de ambas as tabelas"
+            )
+        
+        with col4:
+            result_name = st.text_input(
+                "Nome do resultado",
+                value=f"{left_dataset}_relacionado_{right_dataset}" if 'left_dataset' in locals() and 'right_dataset' in locals() else "",
+                help="Nome para salvar a tabela resultante do relacionamento"
+            )
+        
+        # Botão para executar o relacionamento
+        if st.button("🔗 Executar Relacionamento", type="primary"):
+            if left_dataset and right_dataset and left_key and right_key and result_name:
+                try:
+                    # Mapear tipos de join
+                    join_mapping = {
+                        "Inner Join": "inner",
+                        "Left Join": "left", 
+                        "Right Join": "right",
+                        "Outer Join": "outer"
+                    }
                     
-                    fig = px.scatter(df, x=x_col, y=y_col)
-                    st.plotly_chart(fig, use_container_width=True)
+                    # Executar o relacionamento
+                    left_df = st.session_state.datasets[left_dataset]
+                    right_df = st.session_state.datasets[right_dataset]
+                    
+                    # Verificar se as chaves existem
+                    if left_key not in left_df.columns:
+                        st.error(f"❌ Campo '{left_key}' não encontrado em {left_dataset}")
+                    elif right_key not in right_df.columns:
+                        st.error(f"❌ Campo '{right_key}' não encontrado em {right_dataset}")
+                    else:
+                        # Realizar o merge
+                        result_df = pd.merge(
+                            left_df, 
+                            right_df, 
+                            left_on=left_key, 
+                            right_on=right_key, 
+                            how=join_mapping[join_type],
+                            suffixes=('_principal', '_secundaria')
+                        )
+                        
+                        # Salvar resultado
+                        st.session_state.datasets[result_name] = result_df
+                        
+                        # Mostrar resultado
+                        st.success(f"✅ Relacionamento criado com sucesso!")
+                        st.info(f"📊 Resultado: {len(result_df)} registros na tabela '{result_name}'")
+                        
+                        # Auto-save se habilitado
+                        auto_save_if_enabled(result_name)
+                        
+                        # Preview do resultado
+                        st.subheader(f"📋 Preview do Resultado: {result_name}")
+                        st.dataframe(result_df.head(10), use_container_width=True)
+                        
+                        # Estatísticas do relacionamento
+                        col5, col6, col7 = st.columns(3)
+                        with col5:
+                            st.metric("Registros Resultantes", len(result_df))
+                        with col6:
+                            st.metric("Colunas Totais", len(result_df.columns))
+                        with col7:
+                            matches = len(result_df.dropna())
+                            st.metric("Correspondências", matches)
+                        
+                except Exception as e:
+                    st.error(f"❌ Erro ao executar relacionamento: {str(e)}")
+            else:
+                st.error("❌ Preencha todos os campos obrigatórios")
+        
+        # Seção de ajuda
+        with st.expander("❓ Ajuda - Como usar Relacionamentos"):
+            st.markdown("""
+            ### 🎯 Como Relacionar Tabelas
             
-            elif analysis_type == "Correlação":
-                num_cols = get_numeric_columns(df)
-                if num_cols:
-                    corr_matrix = df[num_cols].corr()
-                    fig = px.imshow(corr_matrix, text_auto=True, aspect="auto")
-                    st.plotly_chart(fig, use_container_width=True)
+            1. **Selecione duas tabelas** que você deseja relacionar
+            2. **Escolha os campos chave** que serão usados para fazer a correspondência
+            3. **Defina o tipo de relacionamento:**
+               - **Inner Join**: Apenas registros que existem em ambas as tabelas
+               - **Left Join**: Todos os registros da tabela principal + correspondências da secundária
+               - **Right Join**: Todos os registros da tabela secundária + correspondências da principal
+               - **Outer Join**: Todos os registros de ambas as tabelas
+            4. **Nomeie o resultado** e clique em "Executar Relacionamento"
             
-            elif analysis_type == "Box Plot":
-                num_cols = get_numeric_columns(df)
-                if num_cols:
-                    selected_col = st.selectbox("Coluna numérica", num_cols)
-                    fig = px.box(df, y=selected_col)
-                    st.plotly_chart(fig, use_container_width=True)
+            ### 💡 Dicas Importantes
+            
+            - Os **campos chave devem ter valores compatíveis** (mesmo tipo de dados)
+            - **Valores duplicados** nas chaves podem gerar múltiplas correspondências
+            - **Colunas com nomes iguais** receberão sufixos '_principal' e '_secundaria'
+            - O **resultado é salvo automaticamente** como um novo dataset
+            
+            ### 🔍 Exemplo Prático
+            
+            **Tabela Clientes:** ID, Nome, Email  
+            **Tabela Pedidos:** PedidoID, ClienteID, Valor  
+            **Relacionamento:** Clientes.ID = Pedidos.ClienteID  
+            **Resultado:** Dados completos de clientes com seus pedidos
+            """)
 
 # TAB 5: Gerenciar Dados
 with tab5:
@@ -1765,96 +1846,118 @@ with tab5:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Datasets Carregados")
+        st.subheader("📊 Datasets Carregados")
+        
+        # Informações de debug
+        total_datasets = len(st.session_state.datasets)
+        if total_datasets > 0:
+            st.info(f"📈 **{total_datasets} dataset(s) carregado(s)**")
+        
         if st.session_state.datasets:
-            for name, df in st.session_state.datasets.items():
-                with st.expander(f"📊 {name}"):
-                    st.write(f"Dimensões: {df.shape}")
-                    st.write(f"Colunas: {', '.join(df.columns[:5])}{'...' if len(df.columns) > 5 else ''}")
+            # Ordenar datasets por nome para consistência
+            sorted_datasets = sorted(st.session_state.datasets.items())
+            
+            for i, (name, df) in enumerate(sorted_datasets):
+                with st.expander(f"📊 {name} ({df.shape[0]} linhas, {df.shape[1]} colunas)", expanded=False):
+                    # Informações do dataset
+                    col_info1, col_info2 = st.columns(2)
+                    with col_info1:
+                        st.write(f"**📏 Dimensões:** {df.shape[0]} × {df.shape[1]}")
+                        st.write(f"**💾 Memória:** {df.memory_usage(deep=True).sum() / 1024:.1f} KB")
                     
+                    with col_info2:
+                        st.write(f"**📋 Colunas:** {', '.join(df.columns[:3])}{'...' if len(df.columns) > 3 else ''}")
+                        st.write(f"**🔢 Tipos:** {len(df.select_dtypes(include=['number']).columns)} numérica(s), {len(df.select_dtypes(include=['object']).columns)} texto")
+                    
+                    # Prévia dos dados
+                    st.write("**👀 Prévia dos dados:**")
+                    st.dataframe(df.head(3), use_container_width=True)
+                    
+                    # Botões de ação
                     col_a, col_b, col_c = st.columns(3)
                     with col_a:
-                        if st.button(f"Visualizar {name}", key=f"view_{name}"):
-                            # Armazenar no session state para exibir fora das colunas
+                        if st.button(f"👁️ Ver Completo", key=f"view_full_{i}_{name}"):
                             st.session_state[f'show_table_{name}'] = True
                             st.rerun()
                     
                     with col_b:
-                        if st.button(f"✏️ Renomear", key=f"rename_{name}"):
-                            # Inicializar estado para renomeação se não existir
-                            if f'renaming_{name}' not in st.session_state:
-                                st.session_state[f'renaming_{name}'] = False
+                        if st.button(f"✏️ Renomear", key=f"rename_{i}_{name}"):
                             st.session_state[f'renaming_{name}'] = True
                             st.rerun()
                     
                     with col_c:
-                        if st.button(f"Excluir {name}", key=f"del_{name}"):
-                            del st.session_state.datasets[name]
-                            st.success(f"Dataset '{name}' excluído!")
-                            st.rerun()
+                        if st.button(f"🗑️ Excluir", key=f"delete_{i}_{name}"):
+                            # Confirmação antes de excluir
+                            if f'confirm_delete_{name}' not in st.session_state:
+                                st.session_state[f'confirm_delete_{name}'] = True
+                                st.warning(f"⚠️ Tem certeza que deseja excluir '{name}'? Clique novamente para confirmar.")
+                                st.rerun()
+                            else:
+                                del st.session_state.datasets[name]
+                                if f'confirm_delete_{name}' in st.session_state:
+                                    del st.session_state[f'confirm_delete_{name}']
+                                st.success(f"✅ Dataset '{name}' excluído!")
+                                st.rerun()
                     
-                    # Exibir tabela fora das colunas para ocupar largura total
+                    # Exibir tabela completa se solicitado
                     if st.session_state.get(f'show_table_{name}', False):
                         st.markdown("---")
-                        st.subheader(f"📊 Visualização do Dataset: {name}")
+                        st.subheader(f"📊 Dataset Completo: {name}")
                         
-                        # Botão para ocultar a tabela
-                        if st.button(f"🔽 Ocultar Tabela", key=f"hide_{name}"):
+                        if st.button(f"🔽 Ocultar", key=f"hide_{i}_{name}"):
                             st.session_state[f'show_table_{name}'] = False
                             st.rerun()
                         
-                        # Exibir a tabela com largura total
-                        st.dataframe(df, use_container_width=True)
-                        st.markdown("---")
+                        st.dataframe(df, use_container_width=True, height=400)
                     
                     # Interface de renomeação
                     if st.session_state.get(f'renaming_{name}', False):
                         st.markdown("---")
                         new_name = st.text_input(
-                            "Novo nome do dataset:", 
+                            "✏️ Novo nome do dataset:", 
                             value=name, 
-                            key=f"new_name_{name}"
+                            key=f"new_name_{i}_{name}"
                         )
                         
                         col_rename1, col_rename2 = st.columns(2)
                         with col_rename1:
-                            if st.button("✅ Confirmar", key=f"confirm_rename_{name}"):
+                            if st.button("✅ Confirmar", key=f"confirm_rename_{i}_{name}"):
                                 if new_name and new_name != name:
                                     if new_name not in st.session_state.datasets:
                                         # Renomear o dataset
                                         st.session_state.datasets[new_name] = st.session_state.datasets.pop(name)
                                         
-                                        # Limpar estado de renomeação
+                                        # Limpar estados relacionados
                                         st.session_state[f'renaming_{name}'] = False
                                         
                                         # Auto-save se habilitado
                                         auto_save_if_enabled(new_name)
                                         
-                                        st.success(f"Dataset renomeado de '{name}' para '{new_name}'!")
+                                        st.success(f"✅ Dataset renomeado de '{name}' para '{new_name}'!")
                                         st.rerun()
                                     else:
-                                        st.error(f"Já existe um dataset com o nome '{new_name}'!")
+                                        st.error(f"❌ Já existe um dataset com o nome '{new_name}'!")
                                 elif new_name == name:
                                     st.session_state[f'renaming_{name}'] = False
                                     st.rerun()
                                 else:
-                                    st.error("Nome não pode estar vazio!")
+                                    st.error("❌ Nome não pode estar vazio!")
                         
                         with col_rename2:
-                            if st.button("❌ Cancelar", key=f"cancel_rename_{name}"):
+                            if st.button("❌ Cancelar", key=f"cancel_rename_{i}_{name}"):
                                 st.session_state[f'renaming_{name}'] = False
                                 st.rerun()
         else:
             st.info("📭 Nenhum dataset carregado")
             st.markdown("""
-            ### Como usar esta aba:
-            1. **Importe dados** na aba "📥 Import de Dados" primeiro
-            2. **Visualize** seus datasets carregados aqui
-            3. **Renomeie** datasets conforme necessário
-            4. **Gerencie projetos** para salvar seu trabalho
-            5. **Exclua** datasets que não precisa mais
+            ### 🚀 Como começar:
+            1. **📥 Importe dados** na aba "Import de Dados"
+            2. **🧹 Limpe os dados** se necessário
+            3. **🔍 Filtre** conforme sua necessidade
+            4. **🔗 Relacione** tabelas se precisar
+            5. **📈 Analise** seus dados
             
-            💡 **Dica**: Esta aba fica mais útil depois que você importar alguns dados!
+            💡 **Dica**: Esta aba mostrará todos os seus datasets depois da importação!
             """)
     
     with col2:
@@ -1970,3 +2073,4 @@ with tab5:
 # Footer
 st.markdown("---")
 st.markdown("**Análise de Dados Pro** - Ferramenta completa para manipulação e análise de dados")
+st.markdown("Desenvolvido por [Edina Tecnologia](https://edinatecnologia.com.br)")
