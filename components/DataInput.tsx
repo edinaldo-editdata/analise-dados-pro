@@ -1,6 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Card } from './Card';
 import { UploadIcon } from './icons';
+import Papa from 'papaparse';
 
 interface DataInputProps {
   dataText: string;
@@ -42,12 +43,6 @@ export const DataInput: React.FC<DataInputProps> = ({
         };
         reader.readAsText(file);
       } else { // Assume CSV
-        const Papa = (window as any).Papa;
-        if (!Papa) {
-          alert("CSV parsing library is not available. Please check your internet connection and try again.");
-          console.error("PapaParse library is not loaded.");
-          return;
-        }
         Papa.parse(file, {
           complete: (results: any) => {
             const flatData = results.data
