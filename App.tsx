@@ -7,7 +7,6 @@ import { ChartIcon, CodeIcon, GithubIcon } from './components/icons';
 import { HeaderInfo } from './components/HeaderInfo';
 import { SavedStudies } from './components/SavedStudies';
 import { SaveStudyModal } from './components/SaveStudyModal';
-import { ThemeToggle } from './components/ThemeToggle';
 
 const App: React.FC = () => {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
@@ -156,22 +155,19 @@ const App: React.FC = () => {
   }, [analysisData]);
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-200 font-sans">
-      <header className="bg-white/80 dark:bg-gray-800/50 backdrop-blur-sm shadow-lg sticky top-0 z-10">
+    <div className="min-h-screen bg-gray-900 text-gray-200 font-sans">
+      <header className="bg-gray-800/50 backdrop-blur-sm shadow-lg sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
-              <ChartIcon className="h-8 w-8 text-cyan-600 dark:text-cyan-400" />
-              <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+              <ChartIcon className="h-8 w-8 text-cyan-400" />
+              <h1 className="text-xl font-bold tracking-tight text-white">
                 Statistical Process Control Analyzer
               </h1>
             </div>
-            <div className="flex items-center gap-3">
-              <ThemeToggle />
-              <a href="https://github.com/google/aistudio" target="_blank" rel="noopener noreferrer" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                <GithubIcon className="h-6 w-6" />
-              </a>
-            </div>
+            <a href="https://github.com/google/aistudio" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white transition-colors">
+              <GithubIcon className="h-6 w-6" />
+            </a>
           </div>
         </div>
       </header>
@@ -225,7 +221,7 @@ const App: React.FC = () => {
         defaultStudyName={studyInfo.processName}
       />
 
-      <footer className="text-center p-4 text-gray-500 dark:text-gray-400 text-sm">
+      <footer className="text-center p-4 text-gray-500 text-sm">
         <p>Built for advanced statistical analysis. &copy; {new Date().getFullYear()}</p>
         <p className="flex items-center justify-center gap-2 mt-1">
             <CodeIcon className="w-5 h-5" />
