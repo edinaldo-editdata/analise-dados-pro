@@ -1,0 +1,5 @@
+{
+  "name": "SPC Statistical Process Control Analyzer",
+  "description": "An advanced client-side tool for statistical process analysis. Input data via text, paste, or CSV file to generate normality graphs, key performance indicators like Cpk and Ppk, box plots, and control charts for comprehensive process evaluation.",
+  "requestFramePermissions": []
+}
